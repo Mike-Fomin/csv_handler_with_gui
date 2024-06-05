@@ -180,7 +180,6 @@ def csv_handler() -> list[dict]:
                         'Доход от учетных цен',
                         'Дата документа',
                         '# документа',
-                        'Подразделение, ФИО'
                     ]:
                         del value[title]
 
@@ -189,6 +188,7 @@ def csv_handler() -> list[dict]:
                         quantity: int = int(value['Количество'])
                         value['Количество'] = quantity * new_data
 
+                    value.update({'used': False})
                     item[key].append(value)
 
             results_list.append(result)
@@ -227,6 +227,7 @@ def table_merge(tables: list) -> None:
     ws.column_dimensions['G'].width = 18
     ws.column_dimensions['H'].width = 18
     ws.column_dimensions['I'].width = 12
+    ws.column_dimensions['J'].width = 50
 
     headers: list = [
         'Контрагент',
@@ -237,7 +238,8 @@ def table_merge(tables: list) -> None:
         'Ед. изм',
         '% наценки было',
         '% наценки стало',
-        '%  Разница'
+        '%  Разница',
+        'Подразделение, ФИО'
     ]
 
     for col, title in enumerate(headers, 1):
@@ -269,7 +271,11 @@ def table_merge(tables: list) -> None:
 
             for item_1 in earlier_list:
                 for item_2 in later_list:
-                    if item_1['Наименование ТМЦ, услуг'] == item_2['Наименование ТМЦ, услуг']:
+                    if item_1['Наименование ТМЦ, услуг'] == item_2['Наименование ТМЦ, услуг'] and not item_2['used']:
+
+                        item_1['used'] = True
+                        item_2['used'] = True
+
                         ws.cell(row=row, column=2).value = item_1['Наименование ТМЦ, услуг']
                         ws.cell(row=row, column=3).value = item_1['Количество']
                         ws.cell(row=row, column=4).value = item_2['Количество']
@@ -278,7 +284,8 @@ def table_merge(tables: list) -> None:
                         ws.cell(row=row, column=7).value = item_1['% наценки']
                         ws.cell(row=row, column=8).value = item_2['% наценки']
                         ws.cell(row=row, column=9).value = f'=H{row} - G{row}'
-                        for col in range(2, 10):
+                        ws.cell(row=row, column=10).value = item_2['Подразделение, ФИО']
+                        for col in range(2, 11):
                             if col > 2:
                                 ws.cell(row=row, column=col).alignment = make_center
                             ws.cell(row=row, column=col).font = arial_normal
@@ -294,7 +301,8 @@ def table_merge(tables: list) -> None:
                     ws.cell(row=row, column=7).value = item_1['% наценки']
                     ws.cell(row=row, column=8).value = 'не заказывалось'
                     ws.cell(row=row, column=9).value = '-'
-                    for col in range(2, 10):
+                    ws.cell(row=row, column=10).value = item_1['Подразделение, ФИО']
+                    for col in range(2, 11):
                         if col > 2:
                             ws.cell(row=row, column=col).alignment = make_center
                         ws.cell(row=row, column=col).font = arial_normal
@@ -303,7 +311,7 @@ def table_merge(tables: list) -> None:
 
             for item_2 in later_list:
                 for item_1 in earlier_list:
-                    if item_2['Наименование ТМЦ, услуг'] == item_1['Наименование ТМЦ, услуг']:
+                    if item_2['Наименование ТМЦ, услуг'] == item_1['Наименование ТМЦ, услуг'] and item_2['used'] and item_1['used']:
                         break
                 else:
                     ws.cell(row=row, column=2).value = item_2['Наименование ТМЦ, услуг']
@@ -314,7 +322,8 @@ def table_merge(tables: list) -> None:
                     ws.cell(row=row, column=7).value = 'не заказывалось'
                     ws.cell(row=row, column=8).value = item_2['% наценки']
                     ws.cell(row=row, column=9).value = '-'
-                    for col in range(2, 10):
+                    ws.cell(row=row, column=10).value = item_2['Подразделение, ФИО']
+                    for col in range(2, 11):
                         if col > 2:
                             ws.cell(row=row, column=col).alignment = make_center
                         ws.cell(row=row, column=col).font = arial_normal
@@ -371,6 +380,7 @@ def table_merge(tables: list) -> None:
 
     WidgetLogger(logger).emit(record='Создание таблицы завершено\n')
     save_name: str = f"{FILEPATH_1.split('/')[-1].split('.')[0]}-{FILEPATH_2.split('/')[-1].split('.')[0]}.xlsx"
+    WidgetLogger(logger).emit(record='Сохранение в файл...\n')
     wb.save(save_name)
     WidgetLogger(logger).emit(record=f'Файл "{save_name}" сохранен\n')
 
@@ -401,7 +411,7 @@ if __name__ == '__main__':
     main_font = Font(family='Arial', size=14)
     italic_font = Font(family='Arial', size=11, slant='italic')
 
-    logger = tk.Text(window, bg='grey', state='normal', height=5, width=86, border=5, font=logger_font)
+    logger = tk.Text(window, bg='grey', state='normal', height=7, width=86, border=5, font=logger_font)
     logger.place(x=15, y=10)
 
     browse_info_1 = tk.Label(window, text='  Путь к первому файлу:', font=main_font, bg='#333333', fg='white')
